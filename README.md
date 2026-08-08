@@ -14,7 +14,7 @@ lime-ai-assistant/
 │   │   ├── extractor.py
 │   │   ├── models.py              # QuestionLink
 │   │   ├── serializer.py
-│   │   ├── service.py             # бывший parser.py (FAQParserService)
+│   │   ├── parser.py              # FAQParserService
 │   │   └── exceptions.py          # DownloadError, ExtractionError, SerializationError
 │   │
 │   ├── indexing/                  # бывший knowledge_base
