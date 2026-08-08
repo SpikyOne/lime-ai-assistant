@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Демонстрационный сайт Lime HD TV</title>
+
+    <!-- Дерзкий геометрический шрифт Unbounded + чистый Inter для основного текста -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Unbounded:wght@800;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: #e8eef3;
+        background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+        background-size: 32px 32px;
+        color: #0f0f0f;
+        font-family: "Inter", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+
+      /* Контейнер занимает 60% ширины экрана */
+      .layout-container {
+        width: 60%;
+        max-width: 1200px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      /* Левая колонка из двух равных плиток */
+      .left-column {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 24px;
+      }
+
+      /* Стиль плиток: мягкий градиент не-белого тона + многослойные тени и внутренний блик */
+      .tile {
+        background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+        border: 1px solid rgba(255, 255, 255, 0.8); /* Светлый контур-блик по краю */
+        border-radius: 24px;
+        padding: 32px;
+        /* Глубокая многослойная тень создает эффект «парения» над фоном */
+        box-shadow:
+          0 20px 40px -15px rgba(15, 23, 42, 0.12),
+          0 8px 16px -8px rgba(15, 23, 42, 0.08),
+          inset 0 1px 2px rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        transition:
+          transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+          box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .tile:hover {
+        transform: translateY(-4px);
+        box-shadow:
+          0 28px 50px -12px rgba(15, 23, 42, 0.18),
+          0 12px 24px -6px rgba(15, 23, 42, 0.1),
+          inset 0 1px 2px rgba(255, 255, 255, 1);
+      }
+
+      /* Броские заголовки */
+      .tile h1,
+      .tile h2 {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 900;
+        text-transform: uppercase;
+        color: #0f0f0f;
+        letter-spacing: -0.02em;
+      }
+
+      .tile h1 {
+        font-size: 2.5rem;
+        text-align: center;
+        line-height: 1.1;
+      }
+
+      .tile h2 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+      }
+
+      .tile p {
+        font-size: 1.1rem;
+        line-height: 1.5;
+        color: #222222;
+      }
+
+      /* Правая плитка с изображением */
+      .right-tile {
+        padding: 24px;
+      }
+
+      .image-box {
+        width: 100%;
+        height: 100%;
+        min-height: 320px;
+        background-color: #0f0f0f;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #f7fcfe;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .image-box svg {
+        width: 70px;
+        height: 70px;
+        fill: currentColor;
+        margin-bottom: 16px;
+      }
+
+      .image-box span {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+      }
+
+      /* Адаптив под узкие экраны */
+      @media (max-width: 900px) {
+        .layout-container {
+          width: 95%;
+          grid-template-columns: 1fr;
+        }
+        .left-column {
+          grid-template-rows: auto auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout-container">
+      <!-- Левая колонка -->
+      <div class="left-column">
+        <!-- Верхняя плитка: Заголовок по центру -->
+        <div class="tile">
+          <h1>LIME HD TV</h1>
+        </div>
+
+        <!-- Нижняя плитка: Описание/Контекст -->
+        <div class="tile">
+          <h2>AI ASSISTANT</h2>
+          <p>
+            Тестовый стенд для проверки работы автономного виджета поддержки.
+            Ответы генерируются локально через RAG-систему на базе FAQ сервиса.
+          </p>
+        </div>
+      </div>
+
+      <!-- Правая колонка: Большая плитка с изображением -->
+      <div class="tile right-tile">
+        <div class="image-box">
+          <!-- SVG-иконка телевизора/экрана -->
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M21 3H3C1.9 3 1 3.9 1 5V17C1 18.1 1.9 19 3 19H8V21H16V19H21C22.1 19 23 18.1 23 17V5C23 3.9 22.1 3 21 3ZM21 17H3V5H21V17Z"
+            />
+          </svg>
+          <span>ONLINE STREAMING</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Подключаем файл виджета -->
+    <script src="../src/widget.js"></script>
+
+    <!-- 2. Инициализируем виджет -->
+    <script>
+      LimeAI.init({
+        apiUrl: "http://127.0.0.1:8000",
+      });
+    </script>
+  </body>
+</html>
