@@ -12,7 +12,7 @@ os.makedirs(config.LOG_DIR, exist_ok=True)
 
 
 # 0. Создаем логгер
-logger = logging.getLogger("FAQParser")
+logger = logging.getLogger("RAGLogger")
 
 
 # 1. Динамический уровень логирования из config.py (если не задан — используется INFO)
