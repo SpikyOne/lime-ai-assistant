@@ -1,5 +1,15 @@
-class RAGServiceError(Exception):
+from app.exceptions import AppError
+
+
+
+
+class RAGServiceError(AppError):
     """Самое базовое исключение для всего RAG-пайплайна."""
+    pass
+
+
+class ChromaConnectionError(RAGServiceError):
+    """Вызывается, если не удалось подключиться к существующей коллекции ChromaDB."""
     pass
 
 
@@ -19,10 +29,4 @@ class OllamaConnectionError(LLMError):
 
 class OllamaDownloadError(LLMError):
     """Вызывается при ошибках во время скачивания весов модели."""
-    pass
-
-
-
-class ChromaConnectionError(RAGServiceError):
-    """Вызывается, если не удалось подключиться к существующей коллекции ChromaDB."""
     pass

@@ -1,4 +1,9 @@
-class KnowledgeBaseError(Exception):
+from app.exceptions import AppError
+
+
+
+
+class KnowledgeBaseError(AppError):
     """Базовое исключение для модуля knowledge-base."""
     pass
 
