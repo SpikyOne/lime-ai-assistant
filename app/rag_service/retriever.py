@@ -39,12 +39,19 @@ class Retriever:
         # 1. Векторизуем запрос
         query_vector = self.embedding_service.embed_query(query)
 
-        # 2. Ищем в Chroma
-        results = self.collection.query(
-            query_embeddings=[query_vector],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"]
-        )
+        try:
+
+            # 2. Ищем в Chroma
+            results = self.collection.query(
+                query_embeddings=[query_vector],
+                n_results=top_k,
+                include=["documents", "metadatas", "distances"]
+            )
+
+        except Exception as e:
+            logger.error(f"Ошибка при поиске в ChromaDB: {e}", exc_info=True)
+            raise ChromaConnectionError(f"Ошибка поиска в базе знаний: {e}") from e
+
 
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]

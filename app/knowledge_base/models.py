@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class RawFAQItem(BaseModel):
