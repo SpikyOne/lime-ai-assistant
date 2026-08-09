@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, Optional
 
-from .. import config
+from app.config import settings
 from .models import FAQItem, QuestionLink, ParseStats
 from .downloader import Downloader
 from .extractor import Extractor
@@ -13,7 +13,7 @@ from .exceptions import DownloadError, ExtractionError, SerializationError
 class FAQParserService:
     """Оркестратор парсинга: асинхронно управляет процессом сбора, обработки и сохранения."""
 
-    def __init__(self, max_concurrent: int = config.MAX_CONCURRENT):
+    def __init__(self, max_concurrent: int = settings.MAX_CONCURRENT):
         self.extractor = Extractor()
         self.serializer = JSONSerializer()
         self.semaphore = asyncio.Semaphore(max_concurrent) # Ограничиваем количество одновременно открытых вкладок
@@ -30,7 +30,7 @@ class FAQParserService:
             try:
                 answer_html = await downloader.get_html(
                     item.url,
-                    wait_selector=config.ANSWER_WAIT_SELECTOR
+                    wait_selector=settings.ANSWER_WAIT_SELECTOR
                 )
             except DownloadError as e:
                 self.stats.failed_download += 1
@@ -59,9 +59,9 @@ class FAQParserService:
         async with Downloader() as downloader:
 
             try:
-                logger.info(f"Загрузка меню FAQ из {config.FAQ_START_URL}...")
+                logger.info(f"Загрузка меню FAQ из {settings.FAQ_START_URL}...")
                 # Указываем, что для главной страницы нам достаточно дождаться блоков меню (.p-1)
-                main_html = await downloader.get_html(config.FAQ_START_URL, wait_selector=config.SECTION_BLOCK_SELECTOR)
+                main_html = await downloader.get_html(settings.FAQ_START_URL, wait_selector=settings.SECTION_BLOCK_SELECTOR)
 
                 links_data = self.extractor.extract_faq_links(main_html)
                 self.stats.total_found = len(links_data)
@@ -79,7 +79,7 @@ class FAQParserService:
                 results: List[FAQItem] = [res for res in parsed_results if res is not None]
 
                 # Сохранение через отдельный сериализатор
-                self.serializer.save(results, config.OUTPUT_FILE)
+                self.serializer.save(results, settings.FAQ_DATA_FILE)
 
             except DownloadError  as e:
                 logger.critical(f"Не удалось загрузить стартовую страницу FAQ. Завершение работы. Ошибка: {e}")

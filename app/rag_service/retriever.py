@@ -2,7 +2,7 @@ import chromadb
 from typing import List
 
 from app.logger import logger
-from app.rag_service.config import config
+from app.config import settings
 from app.rag_service.exceptions import ChromaConnectionError
 from app.rag_service.models import RetrievedChunk
 from app.knowledge_base.embeddings import EmbeddingService
@@ -22,9 +22,9 @@ class Retriever:
 
         try:
             # Читаем существующие файлы БД
-            logger.info(f"Подключение к ChromaDB по пути: {config.CHROMA_PERSIST_DIR}")
-            self.client = chromadb.PersistentClient(path=str(config.CHROMA_PERSIST_DIR))
-            self.collection = self.client.get_collection(name=config.CHROMA_COLLECTION_NAME)
+            logger.info(f"Подключение к ChromaDB по пути: {settings.CHROMA_PERSIST_DIR}")
+            self.client = chromadb.PersistentClient(path=str(settings.CHROMA_PERSIST_DIR))
+            self.collection = self.client.get_collection(name=settings.CHROMA_COLLECTION_NAME)
             logger.info(f"Коллекция загружена. Документов: {self.collection.count()}")
 
         except Exception as e:

@@ -1,15 +1,8 @@
 import sys
 import json
 import requests
-from pathlib import Path
 
-
-# Добавляем корень проекта в sys.path для корректного импорта конфига
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from app.rag_service.config import config
+from app.config import settings
 from app.logger import logger
 from app.rag_service.exceptions import OllamaConnectionError, OllamaDownloadError
 
@@ -17,8 +10,8 @@ from app.rag_service.exceptions import OllamaConnectionError, OllamaDownloadErro
 
 
 def pull_ollama_model():
-    model_name = config.LLM_MODEL
-    api_url = f"{config.OLLAMA_BASE_URL}/api/pull"
+    model_name = settings.LLM_MODEL
+    api_url = f"{settings.OLLAMA_BASE_URL}/api/pull"
 
     logger.info(f"Инициализация загрузки модели '{model_name}' через Ollama...")
     logger.debug(f"Эндпоинт загрузки: {api_url}")
@@ -72,7 +65,7 @@ def pull_ollama_model():
 
 
     except requests.exceptions.ConnectionError as e:
-        logger.error(f"\nСбой подключения к Ollama по адресу {config.OLLAMA_BASE_URL}: {e}")
+        logger.error(f"\nСбой подключения к Ollama по адресу {settings.OLLAMA_BASE_URL}: {e}")
         raise OllamaConnectionError("Не удалось подключиться к Ollama. Убедитесь, что служба запущена.") from e
 
     except requests.exceptions.Timeout as e:

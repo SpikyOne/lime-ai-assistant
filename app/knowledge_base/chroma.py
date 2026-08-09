@@ -2,7 +2,7 @@ from typing import List
 import chromadb
 from chromadb.config import Settings
 
-from .config import config
+from app.config import settings
 from app.logger import logger
 from .models import TextChunk
 from .exceptions import ChromaError
@@ -14,8 +14,8 @@ class ChromaRepository:
     def __init__(self):
 
         # ChromaDB ожидает пути в виде строк, а не объектов Path
-        self.persist_dir = str(config.CHROMA_PERSIST_DIR)
-        self.collection_name = config.CHROMA_COLLECTION_NAME
+        self.persist_dir = str(settings.CHROMA_PERSIST_DIR)
+        self.collection_name = settings.CHROMA_COLLECTION_NAME
 
         logger.info(f"Инициализация ChromaDB. Директория: {self.persist_dir}")
 

@@ -1,7 +1,7 @@
 import httpx
 
 from app.logger import logger
-from app.rag_service.config import config
+from app.config import settings
 from app.rag_service.exceptions import OllamaConnectionError, LLMError
 
 
@@ -11,9 +11,9 @@ class OllamaClient:
     """Низкоуровневый асинхронный HTTP-клиент для работы с Ollama API."""
 
     def __init__(self):
-        self.base_url = config.OLLAMA_BASE_URL
-        self.model = config.LLM_MODEL
-        self.temperature = config.LLM_TEMPERATURE
+        self.base_url = settings.OLLAMA_BASE_URL
+        self.model = settings.LLM_MODEL
+        self.temperature = settings.LLM_TEMPERATURE
         self.api_url = f"{self.base_url}/api/generate"
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -27,7 +27,7 @@ class OllamaClient:
             "options": {
                 "temperature": self.temperature,
                 "top_p": 0.9,
-                "num_predict": config.LLM_MAX_TOKENS,
+                "num_predict": settings.LLM_MAX_TOKENS,
             }
         }
 

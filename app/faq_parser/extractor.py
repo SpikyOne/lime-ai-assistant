@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from typing import List, Optional
 
-from .. import config
+from app.config import settings
 from .models import QuestionLink
 from app.logger import logger
 from .exceptions import ExtractionError
@@ -26,19 +26,19 @@ class Extractor:
         # Ищем все блоки разделов по CSS-селектору
         # В данный момент находим все блоки разделов (ориентируемся на div с классом p-1)
         # Ориентируемся на то, что внутри есть <h3> и ссылки <a>
-        section_blocks = soup.select(config.SECTION_BLOCK_SELECTOR)
+        section_blocks = soup.select(settings.SECTION_BLOCK_SELECTOR)
         if not section_blocks:
             logger.warning("На главной странице не найдено блоков разделов.")
             return []
 
         for block in section_blocks:
             # Ищем название раздела (в данный момент h3)
-            h3 = block.select_one(config.SECTION_TITLE_SELECTOR)
+            h3 = block.select_one(settings.SECTION_TITLE_SELECTOR)
             if not h3: continue
             section_name = h3.get_text(strip=True)
 
             # Ищем все ссылки в этом разделе
-            links = block.select(config.QUESTION_LINK_SELECTOR)
+            links = block.select(settings.QUESTION_LINK_SELECTOR)
             for a in links:
                 href = a.get('href', '')
                 parts = href.strip('/').split('/')
@@ -54,7 +54,7 @@ class Extractor:
                     id=question_id,
                     section_id=section_id,
                     section_name=section_name,
-                    url=f"{config.BASE_URL}{href}",
+                    url=f"{settings.BASE_URL}{href}",
                     question=a.get_text(strip=True)
                 ))
 
@@ -68,13 +68,13 @@ class Extractor:
         soup = BeautifulSoup(html, 'html.parser')
 
         # Стратегия 1: Стандартная страница FAQ (ищем контейнер по классу (работает независимо от того, span это или div))
-        answer_container = soup.select_one(config.ANSWER_PRIMARY_SELECTOR)
+        answer_container = soup.select_one(settings.ANSWER_PRIMARY_SELECTOR)
         if answer_container:
             return answer_container.get_text(separator='\n', strip=True)
 
         # Стратегия 2: Нестандартная/рекламная страница (как ID 99999)
         # Ищем главный контентный блок, который обычно начинается с <h2>
-        main_heading = soup.select_one(config.ANSWER_FALLBACK_HEADING_SELECTOR)
+        main_heading = soup.select_one(settings.ANSWER_FALLBACK_HEADING_SELECTOR)
         if main_heading:
             # Находим родительский блок, внутри которого лежит и заголовок, и текст
             parent_block = main_heading.find_parent('div')

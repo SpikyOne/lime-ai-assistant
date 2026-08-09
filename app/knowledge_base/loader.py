@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Union
 from pydantic import ValidationError
 
-from .config import config
+from app.config import settings
 from .models import RawFAQItem
 from app.logger import logger
 from .exceptions import LoaderError
@@ -14,7 +14,7 @@ class JSONLoader:
 
     def __init__(self, file_path: Union[str, Path, None] = None):
         # Если путь не передан, берем из конфига
-        self.file_path = Path(file_path or config.DATA_FILE_PATH)
+        self.file_path = Path(file_path or settings.FAQ_DATA_FILE)
 
     def load(self) -> List[RawFAQItem]:
         """

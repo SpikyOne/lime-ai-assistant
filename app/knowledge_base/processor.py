@@ -1,9 +1,12 @@
 import re
 from typing import List
-from .config import config
+
+from app.config import settings
 from .exceptions import ProcessorError
 from app.logger import logger
 from .models import ChunkMetadata, RawFAQItem, TextChunk
+
+
 
 
 class TextProcessor:
@@ -11,8 +14,8 @@ class TextProcessor:
 
     def __init__(
         self,
-        chunk_size: int = getattr(config, "CHUNK_SIZE", 1000),
-        chunk_overlap: int = getattr(config, "CHUNK_OVERLAP", 150),
+        chunk_size: int = settings.CHUNK_SIZE,
+        chunk_overlap: int = settings.CHUNK_OVERLAP
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap

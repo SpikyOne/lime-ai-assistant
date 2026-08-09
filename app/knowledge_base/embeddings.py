@@ -3,7 +3,7 @@ from typing import List
 import torch
 from sentence_transformers import SentenceTransformer
 
-from .config import config
+from app.config import settings
 from .exceptions import EmbeddingError
 from app.logger import logger
 from .models import TextChunk
@@ -15,7 +15,7 @@ class EmbeddingService:
     def __init__(self):
 
         # 1. Получаем путь к локальной модели из конфига
-        self.model_path = config.model_path_or_name
+        self.model_path = settings.model_path_or_name
 
         # 2. Строго проверяем, что модель скачана и файлы не повреждены
         self._validate_local_model(self.model_path)
