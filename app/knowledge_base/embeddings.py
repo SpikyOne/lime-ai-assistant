@@ -62,19 +62,25 @@ class EmbeddingService:
 
     def embed_query(self, query: str) -> List[float]:
         """Генерирует эмбеддинг для одного поискового запроса."""
-        is_e5 = "e5" in str(self.model_path).lower()
-        prefix = "query: " if is_e5 else ""
+        try:
 
-        text_to_embed = f"{prefix}{query}"
+            is_e5 = "e5" in str(self.model_path).lower()
+            prefix = "query: " if is_e5 else ""
 
-        # Генерируем вектор для одного запроса
-        embedding_ndarray = self.model.encode(
-            [text_to_embed],
-            convert_to_numpy=True,
-            normalize_embeddings=True  # Обязательно нормализуем, как и документы
-        )
+            text_to_embed = f"{prefix}{query}"
 
-        return embedding_ndarray[0].tolist()
+            # Генерируем вектор для одного запроса
+            embedding_ndarray = self.model.encode(
+                [text_to_embed],
+                convert_to_numpy=True,
+                normalize_embeddings=True  # Обязательно нормализуем, как и документы
+            )
+
+            return embedding_ndarray[0].tolist()
+
+        except Exception as e:
+            logger.error(f"Ошибка при генерации эмбеддинга запроса: {e}", exc_info=True)
+            raise EmbeddingError(f"Не удалось векторизовать запрос: {e}") from e
 
 
     def embed_chunks(self, chunks: List[TextChunk], batch_size: int = 32) -> List[List[float]]:

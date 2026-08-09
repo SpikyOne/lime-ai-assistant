@@ -15,6 +15,8 @@ class OllamaClient:
         self.model = settings.LLM_MODEL
         self.temperature = settings.LLM_TEMPERATURE
         self.api_url = f"{self.base_url}/api/generate"
+        self._client = httpx.AsyncClient(timeout=60)
+
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Отправляет запрос в Ollama и возвращает сгенерированный текст."""
@@ -34,9 +36,8 @@ class OllamaClient:
         try:
             logger.debug(f"Отправка запроса в Ollama (модель: {self.model})")
 
-            async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.post(self.api_url, json=payload)
-                response.raise_for_status()
+            response = await self._client.post(self.api_url, json=payload)
+            response.raise_for_status()
 
             result = response.json()
             return result.get("response", "").strip()
@@ -48,3 +49,8 @@ class OllamaClient:
         except httpx.HTTPError as e:
             logger.error(f"Ошибка API при генерации ответа: {e}")
             raise LLMError(f"Внутренняя ошибка LLM: {e}") from e
+
+
+    async def aclose(self):
+        """Закрывает HTTP-клиент — вызывать при остановке приложения (lifespan shutdown)."""
+        await self._client.aclose()

@@ -13,6 +13,10 @@ class ChromaConnectionError(RAGServiceError):
     pass
 
 
+class InvalidQueryError(RAGServiceError):
+    """Вызывается, если пользовательский запрос некорректен (пустой и т.п.)."""
+    pass
+
 
 # ==========================================
 # Блок LLM (Ollama и генерация текста)

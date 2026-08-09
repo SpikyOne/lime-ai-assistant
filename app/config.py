@@ -1,5 +1,8 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List
+
+
 
 
 class Settings(BaseSettings):
@@ -70,21 +73,39 @@ class Settings(BaseSettings):
             return str(self.EMBEDDING_MODEL_DIR)
         return self.EMBEDDING_MODEL_NAME
 
+
     # ---------- RAG (rag_service) ----------
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     LLM_MODEL: str = "qwen3:8b"
     LLM_TEMPERATURE: float = 0.1
     LLM_MAX_TOKENS: int = 512
 
+
     # ---------- Логирование ----------
     LOG_DIR: Path = BASE_DIR / "logs"                   # Название папки логгирования
     LOG_LEVEL: str = "DEBUG"                            # Настройки логирования: "INFO", "DEBUG", "WARNING", "ERROR"
 
+
+    # ---------- API (FastAPI) ----------
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+    CORS_ALLOWED_ORIGINS: List[str] = ["*"]             # Виджет встраивается на произвольные сайты — ТЗ явно требует "любой сайт"
+    RATE_LIMIT_PER_MINUTE: int = 20
+    MAX_MESSAGE_LENGTH: int = 1000
+
+    @property
+    def CONVERSATION_LOG_FILE(self) -> Path:
+        '''Путь к файлу с логом диалогов (дата, вопрос, ответ)'''
+        return self.DATA_DIR / "conversations.jsonl"
+
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
 
 
 # Экспортируем готовый объект настроек проекта
 settings = Settings()
 
-    # ==================== Ingestion (faq_parser) ====================
-    # ================================================================
+
+# ==================== Ingestion (faq_parser) ====================
+# ================================================================
