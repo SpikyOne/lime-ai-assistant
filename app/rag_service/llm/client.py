@@ -65,11 +65,11 @@ class OllamaClient:
             return result.get("response", "").strip()
 
         except httpx.ConnectError as e:
-            logger.error(f"Сбой сети при обращении к Ollama API: {e}")
+            logger.error(f"Сбой сети при обращении к Ollama API: {type(e).__name__}: {e}", exc_info=True)
             raise OllamaConnectionError(f"Ollama недоступна по адресу {self.base_url}") from e
 
         except httpx.HTTPError as e:
-            logger.error(f"Ошибка API при генерации ответа: {e}")
+            logger.error(f"Ошибка API при генерации ответа: {type(e).__name__}: {e}", exc_info=True)
             raise LLMError(f"Внутренняя ошибка LLM: {e}") from e
 
 

@@ -53,7 +53,7 @@ class EmbeddingService:
             raise EmbeddingError(f"Ошибка инициализации embedding модели: {e}") from e
 
 
-    def _validate_local_model(self, source: Union[str, Path]) -> None:
+    def _validate_local_model(self, source: Union[str, Path]) -> str:
         """
             Проверяет существование локальной директории и целостность ключевых файлов модели.
 
@@ -62,9 +62,10 @@ class EmbeddingService:
         """
         path = Path(source)
 
-        # Если это локальный путь (содержит слэши или абсолютный путь)
-        if path.is_absolute() or "/" in str(source) or "\\" in str(source):
-            if not path.exists() or not path.is_dir():
+        # Признак локального пути — абсолютность или реальное существование на диске,
+        # а не просто наличие "/" (у HF repo id вроде "intfloat/..." он тоже есть)
+        if path.is_absolute() or path.exists():
+            if not path.exists():
                 msg = (
                     f"Папка с моделью не найдена: {path.resolve()}\n"
                     f"Запустите скрипт загрузки: python -m scripts.download_embedding_model"
@@ -81,6 +82,8 @@ class EmbeddingService:
                 )
                 logger.error(msg)
                 raise EmbeddingError(msg)
+
+        return str(source)
 
 
     def embed_query(self, query: str) -> List[float]:
