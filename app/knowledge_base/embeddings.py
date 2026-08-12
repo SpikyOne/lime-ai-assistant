@@ -43,7 +43,7 @@ class EmbeddingService:
             if not path.exists() or not path.is_dir():
                 msg = (
                     f"Папка с моделью не найдена: {path.resolve()}\n"
-                    f"Запустите скрипт загрузки: python scripts/download_model.py"
+                    f"Запустите скрипт загрузки: python -m scripts.download_embedding_model"
                 )
                 logger.error(msg)
                 raise EmbeddingError(msg)

@@ -1,81 +1,92 @@
-# Примерная структура проекта
+# Lime HD TV — AI-ассистент поддержки
 
+RAG-ассистент на локальной LLM (Ollama / Qwen3 8B): отвечает на вопросы пользователей
+по FAQ сервиса Lime HD TV. Работает полностью локально, без внешних AI API.
+
+## Требования
+
+Docker + Docker Compose. ~10 ГБ свободного места (модель эмбеддингов + веса LLM).
+Интернет нужен только при первом запуске.
+
+## Быстрый старт
+
+```bash
+git clone <репозиторий>
+cd lime-ai-assistant
+bash setup.sh
 ```
-lime-ai-assistant/
-├── app/
-│   ├── __init__.py
-│   ├── config.py                  # ЕДИНЫЙ Settings (Pydantic), всё остальное конфигурируется отсюда
-│   ├── logger.py                  # ЕДИНЫЙ logger setup
-│   ├── exceptions.py              # базовый AppError, от которого наследуются остальные
-│   │
-│   ├── ingestion/                 # бывший faq-parser
-│   │   ├── __init__.py
-│   │   ├── downloader.py
-│   │   ├── extractor.py
-│   │   ├── models.py              # QuestionLink
-│   │   ├── serializer.py
-│   │   ├── parser.py              # FAQParserService
-│   │   └── exceptions.py          # DownloadError, ExtractionError, SerializationError
-│   │
-│   ├── indexing/                  # бывший knowledge_base
-│   │   ├── __init__.py
-│   │   ├── loader.py
-│   │   ├── processor.py
-│   │   ├── embeddings.py
-│   │   ├── chroma_repo.py         # бывший chroma.py (переименовать, не путать с пакетом chromadb)
-│   │   ├── models.py              # RawFAQItem, ChunkMetadata, TextChunk
-│   │   ├── pipeline.py            # бывший orchestrator.py (IndexingPipeline)
-│   │   └── exceptions.py          # LoaderError, ProcessorError, EmbeddingError, ChromaError
-│   │
-│   ├── rag/                       # бывший rag_service
-│   │   ├── __init__.py
-│   │   ├── retriever.py           # исправленный импорт (см. ниже)
-│   │   ├── context_builder.py
-│   │   ├── guardrails.py
-│   │   ├── models.py              # RetrievedChunk (переименовать из TextChunk — см. ниже)
-│   │   ├── pipeline.py            # бывший orchestrator.py, тут наконец реализуется оркестрация
-│   │   ├── exceptions.py          # LLMError, OllamaConnectionError, OllamaDownloadError, ChromaConnectionError
-│   │   └── llm/                   # бывший lllm/ (опечатка исправлена)
-│   │       ├── client.py          # async
-│   │       ├── prompts.py
-│   │       └── service.py
-│   │
-│   └── api/                       # НОВОЕ — тут ничего не было
-│       ├── __init__.py
-│       ├── main.py                # FastAPI app + lifespan (загрузка моделей один раз)
-│       ├── schemas.py             # ChatRequest / ChatResponse
-│       ├── deps.py                # singleton-провайдеры Retriever/LLMService/RAGPipeline
-│       ├── rate_limit.py
-│       ├── conversation_log.py    # запись даты/вопроса/ответа (sqlite или jsonl)
-│       ├── error_handlers.py      # маппинг кастомных исключений → HTTP-коды
-│       └── routes/
-│           └── chat.py            # POST /chat
-│
-├── scripts/
-│   ├── run_parser.py              # python -m scripts.run_parser
-│   ├── run_indexer.py             # python -m scripts.run_indexer --rebuild
-│   ├── download_embedding_model.py
-│   ├── download_llm_model.py
-│   └── chat_cli.py                # бывший tests/chat.py — интерактивная ручная проверка
-│
-├── data/
-│   └── faq_data.json              # gitignored, генерится парсером
-├── storage/
-│   └── chroma/                    # gitignored, генерится индексатором
-├── models/
-│   └── multilingual-e5-base/      # gitignored, генерится скриптом
-├── logs/                          # gitignored
-│
-├── tests/
-│   ├── test_search.py             # бывший knowledge_base/tests/test_search.py
-│   ├── eval_questions.json        # 20+ вопросов — критерий приёмки по ТЗ
-│   └── test_rag_quality.py        # НОВОЕ: прогоняет eval_questions, считает % корректных
-│
-├── widget/                        # когда дойдёте — сюда
-│
-├── .gitignore
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+
+Либо теми же командами вручную:
+```bash
+cp .env.example .env
+docker compose build
+docker compose --profile tools up indexer
+docker compose up -d
 ```
+
+Первый запуск: скачивание модели эмбеддингов и весов Qwen3 8B (~6 ГБ суммарно) —
+может занять несколько минут в зависимости от скорости интернета.
+
+## Проверка
+
+```bash
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Как отменить подписку?"}'
+```
+Ответ:
+```json
+{"answer": "...", "sources": ["https://limehd.tv/faq/8/question/1"]}
+```
+Swagger-документация: http://localhost:8000/docs
+Демо виджета: http://localhost:8080/demo/index.html
+
+## Обычный запуск (данные уже построены)
+
+```bash
+docker compose up -d
+```
+
+## Обновление базы знаний
+
+Вопросы изменились/добавились (ничего не удалено):
+```bash
+docker compose --profile tools up parser
+docker compose --profile tools run --rm indexer python -m scripts.run_indexer
+```
+
+Вопросы были удалены из FAQ — нужна полная пересборка:
+```bash
+docker compose --profile tools up parser
+docker compose --profile tools up indexer
+```
+
+## Подключение виджета на свой сайт
+
+```html
+<script src="widget.js"></script>
+<script>
+  LimeAI.init({ apiUrl: "http://localhost:8000" });
+</script>
+```
+
+## Переменные окружения (.env)
+
+| Переменная | Назначение | По умолчанию |
+|---|---|---|
+| `LLM_MODEL` | Модель в Ollama | `qwen3:8b` |
+| `LLM_TEMPERATURE` | Температура генерации | `0.1` |
+| `LLM_MAX_TOKENS` | Макс. длина ответа | `512` |
+| `RATE_LIMIT_PER_MINUTE` | Лимит запросов на IP | `20` |
+| `MAX_MESSAGE_LENGTH` | Макс. длина вопроса | `1000` |
+| `CORS_ALLOWED_ORIGINS` | Разрешённые источники | `["*"]` |
+
+## Известные ограничения
+
+- Без GPU (по умолчанию) генерация ответа на CPU идёт медленнее, чем целевые 5 секунд
+  из ТЗ — это ожидаемо для CPU-окружения проверки; с GPU-проходом для Ollama
+  укладывается с запасом.
+- Первый вопрос сразу после свежего `docker compose up` может получить ответ
+  «сервис временно недоступен», если модель Qwen3 ещё докачивается фоном —
+  подождите минуту и повторите (см. `docker compose logs -f ollama`).

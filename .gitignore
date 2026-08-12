@@ -36,6 +36,7 @@ storage/chroma/*
 # Исходные файлы данных (игнорируем содержимое, сохраняем папку)
 data/*
 !data/.gitkeep
+!data/faq_data.json
 
 # Локальные модели и кэш (HuggingFace / Sentence-Transformers)
 .cache/
