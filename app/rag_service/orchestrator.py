@@ -1,6 +1,15 @@
+"""
+    Модуль оркестрации RAG-пайплайна.
+
+    Предоставляет класс RAGPipeline, объединяющий компоненты валидации запроса,
+    векторного поиска контекста в базе знаний, сборки промпта и асинхронной
+    генерации ответа языковой моделью.
+"""
+
 import asyncio
 from typing import List, Tuple
 
+# Локальные импорты
 from app.exceptions import AppError
 from app.logger import logger
 from app.rag_service.retriever import Retriever
@@ -12,15 +21,27 @@ from app.rag_service.llm.service import LLMService
 
 
 class RAGPipeline:
-    """Оркестратор полного цикла: вопрос ---> поиск ---> контекст ---> ответ LLM."""
+    """
+        Оркестратор полного цикла RAG: вопрос -> поиск -> контекст -> ответ LLM.
+    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+            Инициализирует основные сервисы и компоненты RAG-пайплайна.
+        """
         self.retriever = Retriever()
         self.guardrails = Guardrails()
         self.context_builder = ContextBuilder()
         self.llm_service = LLMService()
 
+
     async def answer(self, question: str) -> Tuple[str, List[str]]:
+        """
+            Обрабатывает пользовательский вопрос и формирует итоговый ответ с источниками.
+
+            :param question: Текст вопроса пользователя.
+            :return: Кортеж из (текст_ответа, список_ссылок_на_источники).
+        """
         question = self.guardrails.validate_user_query(question)
 
         try: chunks = await asyncio.to_thread(self.retriever.search, question)
@@ -38,10 +59,15 @@ class RAGPipeline:
         context = self.context_builder.build(chunks)
         answer_text = await self.llm_service.generate_rag_answer(context, question)
 
-        sources = [c.metadata.get("url") for c in chunks if c.metadata.get("url")]
+        # Извлечение и дедупликация уникальных URL-источников
+        raw_sources = [c.metadata.get("url") for c in chunks if c.metadata.get("url")]
+        sources = list(dict.fromkeys(raw_sources))
+
         return answer_text, sources
 
 
     async def aclose(self) -> None:
-        """Освобождает ресурсы пайплайна (HTTP-клиент Ollama) — вызывать при остановке приложения."""
+        """
+            Освобождает сетевые и системные ресурсы пайплайна (включая HTTP-клиент Ollama).
+        """
         await self.llm_service.client.aclose()

@@ -7,31 +7,57 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: lime-ollama
+
     volumes:
       - ollama_data:/root/.ollama
-    environment:
-      LLM_MODEL: ${LLM_MODEL:-qwen3:8b}
     # Переопределяем запуск: поднимаем сервер, ждём его готовности и сами
     # скачиваем модель внутрь volume. Если модель уже скачана с прошлого
     # раза — "ollama pull" почти мгновенно это проверяет и не качает заново.
     # $$ вместо $ — экранирование для самого Compose: переменную должен
     # подставить шелл ВНУТРИ контейнера в момент запуска, а не Compose
     # при чтении этого файла.
-    entrypoint: ["/bin/sh", "-c"]
+    # Порт наружу НЕ публикуем — только внутренняя docker-сеть
+
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen3:8b}
+
+    entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
+        set -e
+
+        echo "==> Запускаю Ollama..."
         ollama serve &
-        until ollama list >/dev/null 2>&1; do sleep 1; done
+
+        echo "==> Жду запуска Ollama..."
+        until ollama list >/dev/null 2>&1; do
+          sleep 1
+        done
+
+        echo "==> Проверяю модель $$LLM_MODEL..."
         ollama pull "$$LLM_MODEL"
+
+        echo "==> Прогреваю модель $$LLM_MODEL..."
+        ollama run "$$LLM_MODEL" "Ответь одним словом: OK" >/dev/null
+
+        echo "ready" > /tmp/model-ready
+
+        echo "==> Модель готова."
         wait
+
     healthcheck:
-      test: ["CMD", "ollama", "list"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/model-ready && ollama show \"$$LLM_MODEL\" >/dev/null 2>&1"
+        ]
       interval: 5s
-      timeout: 5s
+      timeout: 10s
       retries: 30
       start_period: 10s
+
     restart: unless-stopped
-    # Порт наружу НЕ публикуем — только внутренняя docker-сеть
+
 
   api:
     image: lime-app:latest

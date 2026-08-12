@@ -1,5 +1,14 @@
-import httpx
+"""
+    Модуль низкоуровневого HTTP-клиента для Ollama API.
 
+    Предоставляет класс OllamaClient для асинхронного взаимодействия
+    с локальным или удаленным сервисом Ollama через REST API.
+"""
+
+import httpx
+from typing import Any, Dict
+
+# Локальные импорты
 from app.logger import logger
 from app.config import settings
 from app.rag_service.exceptions import OllamaConnectionError, LLMError
@@ -8,9 +17,14 @@ from app.rag_service.exceptions import OllamaConnectionError, LLMError
 
 
 class OllamaClient:
-    """Низкоуровневый асинхронный HTTP-клиент для работы с Ollama API."""
+    """
+        Низкоуровневый асинхронный HTTP-клиент для работы с Ollama API.
+    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+            Инициализирует параметры подключения к Ollama и создаёт HTTP-клиент.
+        """
         self.base_url = settings.OLLAMA_BASE_URL
         self.model = settings.LLM_MODEL
         self.temperature = settings.LLM_TEMPERATURE
@@ -19,9 +33,17 @@ class OllamaClient:
 
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Отправляет запрос в Ollama и возвращает сгенерированный текст."""
+        """
+            Отправляет текстовый промпт в Ollama и возвращает сгенерированный текст.
 
-        payload = {
+            :param system_prompt: Системная инструкция с ролью и правилами для модели.
+            :param user_prompt: Пользовательский промпт, содержащий контекст и вопрос.
+            :return: Очищенная текстовая строка сгенерированного ответа.
+            :raises OllamaConnectionError: При отсутствии сетевого доступа к Ollama.
+            :raises LLMError: При HTTP-ошибках или сбоях генерации на стороне Ollama.
+        """
+
+        payload: Dict[str, Any] = {
             "model": self.model,
             "system": system_prompt,
             "prompt": user_prompt,
@@ -51,6 +73,8 @@ class OllamaClient:
             raise LLMError(f"Внутренняя ошибка LLM: {e}") from e
 
 
-    async def aclose(self):
-        """Закрывает HTTP-клиент — вызывать при остановке приложения (lifespan shutdown)."""
+    async def aclose(self) -> None:
+        """
+            Закрывает асинхронный HTTP-клиент и освобождает ресурсы соединения.
+        """
         await self._client.aclose()

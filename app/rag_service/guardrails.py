@@ -1,3 +1,10 @@
+"""
+    Модуль валидации и фильтрации данных (Guardrails) RAG-сервиса.
+
+    Предоставляет класс Guardrails для первичной очистки и проверки пользовательских
+    запросов, а также отсеивания нерелевантной или некорректной информации из чанков.
+"""
+
 from typing import List
 
 from app.config import settings
@@ -9,15 +16,23 @@ from app.rag_service.exceptions import InvalidQueryError
 
 
 class Guardrails:
-    """Класс для фильтрации и валидации данных в пайплайне."""
+    """
+        Класс для фильтрации и валидации данных в RAG-пайплайне.
+    """
 
     @staticmethod
     def validate_user_query(query: str) -> str:
-        """Очищает и проверяет вопрос пользователя перед поиском."""
+        """
+            Очищает и проверяет поисковый запрос пользователя.
+
+            :param query: Исходный текстовый запрос пользователя.
+            :return: Очищенная и усеченная (при превышении лимита) строка запроса.
+            :raises InvalidQueryError: Если запрос пустой или состоит только из пробелов.
+        """
         query = query.strip()
         if not query: raise InvalidQueryError("Вопрос не может быть пустым.")
 
-        # Обрезаем слишком длинные запросы (защита от перегрузки / спама)
+        # Ограничение максимальной длины запроса для защиты от перегрузки
         if len(query) > settings.MAX_MESSAGE_LENGTH:
             logger.warning(f"Запрос обрезан, так как превышает {settings.MAX_MESSAGE_LENGTH} символов.")
             query = query[:settings.MAX_MESSAGE_LENGTH]
@@ -27,9 +42,16 @@ class Guardrails:
 
     @staticmethod
     def filter_retrieved_chunks(chunks: List[RetrievedChunk]) -> List[RetrievedChunk]:
-        """Удаляет мусор или нерелевантные фрагменты, возвращенные базой."""
+        """
+            Фильтрует список чанков, полученных из векторного хранилища.
 
-        filtered = []
+            Исключает пустые фрагменты текста и фиксирует предупреждение,
+            если все найденные элементы были отклонены.
+
+            :param chunks: Список чанков, извлеченных из базы знаний.
+            :return: Список отфильтрованных релевантных чанков.
+        """
+        filtered: List[RetrievedChunk] = []
         for chunk in chunks:
             # Убираем пустые чанки
             if not chunk.text.strip(): continue

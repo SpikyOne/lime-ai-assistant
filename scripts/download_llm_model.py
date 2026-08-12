@@ -1,7 +1,15 @@
+"""
+    Скрипт загрузки LLM-модели через API Ollama.
+
+    Отправляет поток запросов (streaming pull) к сервису Ollama для загрузки
+    заданной в конфигурации языковой модели с отображением прогресса в консоли.
+"""
+
 import sys
 import json
 import requests
 
+# Локальные импорты
 from app.config import settings
 from app.logger import logger
 from app.rag_service.exceptions import OllamaConnectionError, OllamaDownloadError
@@ -9,7 +17,13 @@ from app.rag_service.exceptions import OllamaConnectionError, OllamaDownloadErro
 
 
 
-def pull_ollama_model():
+def pull_ollama_model() -> None:
+    """
+        Загружает LLM-модель через API Ollama с отображением статуса в реальном времени.
+
+        :raises OllamaConnectionError: При отсутствии подключения или таймауте Ollama.
+        :raises OllamaDownloadError: При ошибочном статусе API или непредвиденных сбоях.
+    """
     model_name = settings.LLM_MODEL
     api_url = f"{settings.OLLAMA_BASE_URL}/api/pull"
 
@@ -21,7 +35,7 @@ def pull_ollama_model():
 
     try:
 
-        # timeout=(10, None) -> 10 сек на подключение, бесконечно на само скачивание
+        # timeout=(10, None) -> 10 сек на подключение, без ограничения по времени на скачивание
         # stream=True позволяет получать данные по мере скачивания (chunk by chunk)
         with requests.post(api_url, json=payload, stream=True, timeout=(10, None)) as response:
 
@@ -31,7 +45,6 @@ def pull_ollama_model():
                 raise OllamaDownloadError(f"Ошибка API Ollama (Код {response.status_code}).")
 
             for line in response.iter_lines():
-
                 if not line: continue
 
                 # Ollama возвращает прогресс в виде JSON-строк
@@ -50,13 +63,11 @@ def pull_ollama_model():
                     percent = (completed_bytes / total_bytes) * 100
 
                     # \r перезаписывает текущую строку в консоли, создавая эффект анимации
-                    sys.stdout.write(
-                        f"\r[{percent:5.1f}%] {status} | {completed_gb:.2f} GB / {total_gb:.2f} GB"
-                    )
+                    sys.stdout.write(f"\r[{percent:5.1f}%] {status} | {completed_gb:.2f} GB / {total_gb:.2f} GB")
                     sys.stdout.flush()
+
                 else:
-                    # Если это просто текстовый статус (например, "pulling manifest")
-                    # Текстовые статусы вроде "pulling manifest", затираем старую строку пробелами
+                    # Если это просто текстовый статус (например, "pulling manifest"), затираем старую строку пробелами
                     sys.stdout.write(f"\r{status}" + " " * 40)
                     sys.stdout.flush()
 

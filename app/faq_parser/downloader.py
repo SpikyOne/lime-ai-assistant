@@ -1,35 +1,72 @@
-import asyncio
-from typing import Optional
-from playwright.async_api import async_playwright, Playwright, Browser, BrowserContext, TimeoutError as PlaywrightTimeoutError
+"""
+    Модуль асинхронной загрузки веб-страниц с использованием Playwright.
 
+    Предоставляет класс Downloader с поддержкой выполнения JavaScript-сценариев,
+    ожидания появления DOM-элементов, обработки таймаутов и повторных попыток (Retry Logic).
+"""
+
+import asyncio
+from types import TracebackType
+from typing import Optional, Type
+from playwright.async_api import (
+    async_playwright,
+    Playwright,
+    Browser,
+    BrowserContext,
+    TimeoutError as PlaywrightTimeoutError,
+)
+
+# Локальные импорты
 from app.config import settings
 from app.logger import logger
-from .exceptions import DownloadError
+from app.faq_parser.exceptions import DownloadError
 
 
 
 class Downloader:
-    """Асинхронный загрузчик страниц через браузер с поддержкой JS-ренедринга Playwright."""
+    """
+        Асинхронный загрузчик веб-страниц на базе headless-браузера Chromium (Playwright).
 
-    def __init__(self):
+        Поддерживает рендеринг клиентского JavaScript, ожидание появления конкретных
+        селекторов и механизм повторных попыток при сбоях сети или задержках ответа.
+    """
+
+    def __init__(self) -> None:
+        """
+            Инициализирует экземпляр загрузчика с пустыми ссылками на ресурсы Playwright.
+        """
         self._playwright: Optional[Playwright] = None
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
 
 
-    async def __aenter__(self):
-        """Вход в контекстный менеджер (async with)."""
+    async def __aenter__(self) -> "Downloader":
+        """
+            Вход в асинхронный контекстный менеджер (async with).
+            :return: Запущенный и готовый к работе экземпляр Downloader.
+        """
         await self.start()
         return self
 
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Выход из контекстного менеджера с гарантированным закрытием ресурсов."""
+    async def __aexit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_val: Optional[BaseException],
+            exc_tb: Optional[TracebackType],
+    ) -> None:
+        """
+            Выход из асинхронного контекстного менеджера с гарантированным освобождением ресурсов.
+        """
         await self.close()
 
 
-    async def start(self):
-        """Инициализация асинхронного браузера Playwright"""
+    async def start(self) -> None:
+        """
+            Запускает процесс браузера Playwright и создает изолированный контекст.
+
+            :raises DownloadError: Если не удалось инициализировать браузер Playwright.
+        """
         logger.info("Запуск браузера Playwright...")
 
         try:
@@ -38,30 +75,34 @@ class Downloader:
             self.context = await self.browser.new_context(user_agent=settings.HEADERS.get("User-Agent"))
 
         except Exception as e:
-            logger.error(f"Не удалось инициализировать Playwright: {e}")
+            logger.error(f"Не удалось инициализировать Playwright: {e}", exc_info=True)
             raise DownloadError(f"Ошибка старта браузера: {e}") from e
 
 
-
     async def get_html(self, url: str, wait_selector: Optional[str] = None) -> str:
-        """ Открывает страницу в отдельной асинхронной вкладке и ждет появления конкретного элемента
-        с поддержкой повторных попыток (Retry Logic)."""
+        """
+            Открывает веб-страницу в новой вкладке браузера и извлекает ее результирующий HTML-код.
+            Использует механизм повторных попыток (Retry Logic) с паузой, увеличивающейся с каждой попыткой.
 
+            :param url: Целевой URL-адрес для загрузки.
+            :param wait_selector: CSS-селектор элемента, появления которого необходимо дождаться перед сбором HTML.
+            :return: Полный HTML-код загруженной страницы.
+            :raises DownloadError: Если браузер не запущен или исчерпаны все попытки загрузки.
+        """
         if not self.context:
             raise DownloadError("Браузер не запущен. Вызовите start() или используйте 'async with'.")
 
-        last_exception = None
-
+        last_exception: Optional[Exception] = None
 
         for attempt in range(1, settings.MAX_RETRIES + 1):
             page = None
             try:
                 page = await self.context.new_page()
 
-                # Переходим на страницу
+                # Переход по целевому URL-адресу
                 await page.goto(url, timeout=settings.TIMEOUT * 1000)
 
-                # Ждем только нужный тег
+                # Ожидание появления селектора или полной загрузки DOM
                 if wait_selector: await page.wait_for_selector(wait_selector, timeout=settings.TIMEOUT * 1000)
                 else: await page.wait_for_load_state("domcontentloaded")
 
@@ -82,9 +123,10 @@ class Downloader:
         raise DownloadError(f"Превышено число попыток загрузки {url}: {last_exception}") from last_exception
 
 
-
     async def close(self):
-        """Безопасное закрытие всех ресурсов браузера при завершении работы."""
+        """
+            Безопасно закрывает контекст браузера и останавливает процесс Playwright.
+        """
         logger.info("Закрытие ресурсов браузера...")
 
         if self.context:

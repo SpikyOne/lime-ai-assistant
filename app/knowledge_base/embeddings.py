@@ -1,26 +1,46 @@
+"""
+    Модуль генерации векторных эмбеддингов для текстовых чанков и поисковых запросов.
+
+    Использует библиотеку SentenceTransformers и PyTorch для аппаратного ускорения
+    вычислений (CUDA, MPS, CPU). Поддерживает специфичные префиксы для E5-моделей
+    ("query: " / "passage: ") и L2-нормализацию векторов.
+"""
+
 from pathlib import Path
-from typing import List
+from typing import List, Union
+
 import torch
 from sentence_transformers import SentenceTransformer
 
+# Локальные импорты
 from app.config import settings
-from .exceptions import EmbeddingError
 from app.logger import logger
-from .models import TextChunk
+from app.knowledge_base.exceptions import EmbeddingError
+from app.knowledge_base.models import TextChunk
+
+
 
 
 class EmbeddingService:
-    """Сервис для векторизации текста с помощью sentence-transformers."""
+    """
+        Сервис для векторного представления (векторизации) текстов через SentenceTransformers.
 
-    def __init__(self):
+        Автоматически выбирает доступный вычислительный ускоритель (CUDA, Apple MPS или CPU),
+        проверяет целостность локальных весов модели и форматирует тексты в соответствии
+        с требованиями выбранной архитектуры эмбеддеров.
+    """
 
+    def __init__(self) -> None:
+        """
+            Инициализирует сервис векторизации и загружает модель эмбеддингов.
+        """
         # 1. Получаем путь к локальной модели из конфига
         self.model_path = settings.model_path_or_name
 
         # 2. Строго проверяем, что модель скачана и файлы не повреждены
         self._validate_local_model(self.model_path)
 
-        # 3. Автоматическое определение устройства для вычислений (GPU или CPU)
+        # 3. Автоматическое определение устройства для вычислений (GPU, MPS или CPU)
         if torch.cuda.is_available(): self.device = "cuda"
         elif torch.backends.mps.is_available(): self.device = "mps"  # Для Apple Silicon (M1/M2/M3)
         else: self.device = "cpu"
@@ -33,9 +53,13 @@ class EmbeddingService:
             raise EmbeddingError(f"Ошибка инициализации embedding модели: {e}") from e
 
 
+    def _validate_local_model(self, source: Union[str, Path]) -> None:
+        """
+            Проверяет существование локальной директории и целостность ключевых файлов модели.
 
-    def _validate_local_model(self, source: str) -> None:
-        """Проверяет существование локальной папки и целостность ключевых файлов модели."""
+            :param source: Путь к локальной директории или название модели из Hugging Face.
+            :raises EmbeddingError: Если директория модели или конфигурационный файл config.json отсутствуют.
+        """
         path = Path(source)
 
         # Если это локальный путь (содержит слэши или абсолютный путь)
@@ -59,11 +83,15 @@ class EmbeddingService:
                 raise EmbeddingError(msg)
 
 
-
     def embed_query(self, query: str) -> List[float]:
-        """Генерирует эмбеддинг для одного поискового запроса."""
-        try:
+        """
+            Генерирует L2-нормализованный векторный эмбеддинг для одного поискового запроса.
 
+            :param query: Текст поискового запроса пользователя.
+            :return: Список вещественных чисел, представляющих вектор запроса.
+            :raises EmbeddingError: Если не удалось сгенерировать эмбеддинг.
+        """
+        try:
             is_e5 = "e5" in str(self.model_path).lower()
             prefix = "query: " if is_e5 else ""
 
@@ -73,7 +101,7 @@ class EmbeddingService:
             embedding_ndarray = self.model.encode(
                 [text_to_embed],
                 convert_to_numpy=True,
-                normalize_embeddings=True  # Обязательно нормализуем, как и документы
+                normalize_embeddings=True                       # Обязательно нормализуем, как и документы
             )
 
             return embedding_ndarray[0].tolist()
@@ -85,8 +113,12 @@ class EmbeddingService:
 
     def embed_chunks(self, chunks: List[TextChunk], batch_size: int = 32) -> List[List[float]]:
         """
-        Генерирует L2-нормализованные эмбеддинги (векторы) для списка текстовых чанков.
-        Возвращает список списков float, который напрямую принимает ChromaDB.
+            Генерирует L2-нормализованные эмбеддинги для списка текстовых чанков.
+
+            :param chunks: Список объектов TextChunk для векторизации.
+            :param batch_size: Размер пакета (batch) для обработки моделью.
+            :return: Список векторов заданной размерности, совместимый с ChromaDB.
+            :raises EmbeddingError: При критической ошибке в процессе векторизации.
         """
         if not chunks:
             logger.warning("Передан пустой список чанков для векторизации.")
@@ -107,9 +139,9 @@ class EmbeddingService:
             embeddings_ndarray = self.model.encode(
                 texts_to_embed,
                 batch_size = batch_size,
-                show_progress_bar = True,  # Выводит прогресс-бар в консоль
-                convert_to_numpy = True,  # Возвращает numpy array
-                normalize_embeddings = True  # ВАЖНО: нормализация L2 (улучшает качество косинусного поиска для E5)
+                show_progress_bar = True,                           # Выводит прогресс-бар в консоль
+                convert_to_numpy = True,                            # Возвращает numpy array
+                normalize_embeddings = True                         # ВАЖНО: нормализация L2 (улучшает качество косинусного поиска для E5)
             )
 
             # Конвертируем numpy array в обычный list of lists для совместимости с БД

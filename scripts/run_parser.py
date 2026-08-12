@@ -1,11 +1,22 @@
+"""
+    Скрипт запуска асинхронного парсера данных FAQ.
+
+    Инициализирует и запускает сервис `FAQParserService` для сбора,
+    парсинга и сохранения исходных данных FAQ в файл JSON.
+"""
+
 import asyncio
+
+# Локальные импорты
 from app.faq_parser.parser import FAQParserService
 from app.logger import logger
 
 
 
-async def main():
-    """Основная функция для инициализации и запуска парсера FAQ."""
+async def main() -> None:
+    """
+        Инициализирует и запускает асинхронный процесс парсинга FAQ.
+    """
 
     # Создаем экземпляр парсера
     service = FAQParserService()

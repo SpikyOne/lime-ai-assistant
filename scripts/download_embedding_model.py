@@ -1,18 +1,28 @@
+"""
+    Скрипт предзагрузки весов модели эмбеддингов с Hugging Face Hub.
+
+    Использует snapshot_download для локального сохранения весов векторной
+    модели, указанной в конфигурации, с поддержкой возобновления скачивания.
+"""
+
 import sys
 from huggingface_hub import snapshot_download
 from huggingface_hub.utils import enable_progress_bars
 
+# Локальные импорты
 from app.config import settings
 
 
 
 
-# Принудительно включаем отображение шкалы загрузки для файлов (tqdm)
+# Принудительное включение отображения индикатора прогресса (tqdm)
 enable_progress_bars()
 
 
-def download():
-
+def download() -> None:
+    """
+        Загружает репозиторий модели эмбеддингов в локальную директорию.
+    """
     model_name = settings.EMBEDDING_MODEL_NAME
     save_dir = settings.EMBEDDING_MODEL_DIR
 
