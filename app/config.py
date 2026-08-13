@@ -203,6 +203,26 @@ class Settings(BaseSettings):
         description="Максимальное количество генерируемых токенов ответа",
     )
 
+    LLM_CONTEXT_TOKENS: int = Field(
+        default=2048,
+        description="Размер контекстного окна Ollama для одного запроса",
+    )
+
+    LLM_READ_TIMEOUT: int = Field(
+        default=180,
+        description="Максимальное время ожидания генерации ответа от Ollama",
+    )
+
+    LLM_WARMUP_RETRIES: int = Field(
+        default=3,
+        description="Количество повторных попыток прогрева LLM при старте",
+    )
+
+    LLM_WARMUP_DELAY: float = Field(
+        default=2.0,
+        description="Пауза между попытками прогрева LLM",
+    )
+
     # ==============================================================================
 
 

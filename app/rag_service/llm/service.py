@@ -25,6 +25,14 @@ class LLMService:
         """
         self.client = OllamaClient()
 
+
+    async def warmup(self) -> None:
+        """
+            Выполняет прогрев LLM через низкоуровневый клиент.
+        """
+        await self.client.warmup()
+
+
     async def generate_rag_answer(self, context: str, question: str) -> str:
         """
             Собирает итоговый промпт из контекста и вопроса, затем генерирует ответ через LLM.
@@ -42,5 +50,7 @@ class LLMService:
         user_prompt = RAG_USER_TEMPLATE.format(context=context, question=question)
         logger.info(f"Генерация ответа для вопроса: '{question[:50]}...'")
 
-        try: return await self.client.generate(system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt)
-        except LLMError: return "Извините, сервис генерации ответов временно недоступен."
+        # Ошибку намеренно НЕ скрываем.
+        # Она должна попасть в централизованный FastAPI exception handler и превратиться в HTTP 503.
+        return await self.client.generate(system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt)
+        #except LLMError: return "Извините, сервис генерации ответов временно недоступен."

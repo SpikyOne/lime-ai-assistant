@@ -1,41 +1,127 @@
 #!/bin/bash
+
 set -e
 
-echo "==> Копирую .env (если ещё не создан)"
-[ -f .env ] || cp .env.example .env
+echo "============================================================"
+echo " Lime AI Assistant — установка и запуск"
+echo "============================================================"
 
-echo "==> Собираю образы"
+
+
+# ============================================================
+# 1. .env
+# ============================================================
+
+echo ""
+echo "==> Проверяю .env"
+
+if [ ! -f .env ]; then
+    cp .env.example .env
+    echo "Создан .env из .env.example"
+else
+    echo ".env уже существует"
+fi
+
+
+
+# ============================================================
+# 2. BUILD
+# ============================================================
+
+echo ""
+echo "==> Собираю Docker-образы"
+
 docker compose build
 
-echo "==> Строю базу знаний (модель эмбеддингов + индексация ChromaDB)"
-docker compose --profile tools up indexer
 
-echo "==> Поднимаю Ollama"
-docker compose up -d ollama
 
-echo ""
-echo "==> Ollama скачивает и прогревает модель Qwen3 8B (~5 ГБ)."
-echo "    Это разовая операция — при следующих запусках так долго не будет."
-echo "    Ждём готовности..."
-echo ""
-
-until [ "$(docker inspect -f '{{.State.Health.Status}}' lime-ollama 2>/dev/null)" = "healthy" ]; do
-  printf "."
-  sleep 3
-done
+# ============================================================
+# 3. KNOWLEDGE BASE
+# ============================================================
 
 echo ""
-echo "==> Модель готова. Запускаю API и демо-виджет."
+echo "==> Проверяю/строю базу знаний (модель эмбеддингов + индексация ChromaDB)"
+
+docker compose \
+    --profile tools \
+    up \
+    --abort-on-container-exit \
+    indexer
+
+
+
+# ============================================================
+# 4. START
+# ============================================================
+
+echo ""
+echo "==> Запускаю систему"
+
 docker compose up -d
 
-sleep 3
-if curl -sf http://localhost:8000/health >/dev/null; then
-  echo ""
-  echo "  Всё готово."
-  echo "  API:          http://localhost:8000"
-  echo "  Swagger:      http://localhost:8000/docs"
-  echo "  Демо виджета: http://localhost:8080/demo/index.html"
-else
-  echo ""
-  echo "API пока не отвечает — проверьте: docker compose logs -f api"
-fi
+
+
+# ============================================================
+# 5. WAIT FOR /READY
+# ============================================================
+
+echo ""
+echo "==> Жду полной готовности AI-пайплайна..."
+echo ""
+echo "    /health = процесс FastAPI жив"
+echo "    /ready  = E5 + Chroma + Qwen готовы"
+echo ""
+
+
+MAX_ATTEMPTS=180
+ATTEMPT=0
+
+while true; do
+
+    ATTEMPT=$((ATTEMPT + 1))
+
+    if curl -sf http://localhost:8000/ready >/dev/null 2>&1; then
+        break
+    fi
+
+    if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+
+        echo ""
+        echo "============================================================"
+        echo "ОШИБКА: AI-пайплайн не стал READY"
+        echo "============================================================"
+        echo ""
+
+        echo "Последние логи API:"
+        docker compose logs --tail=100 api || true
+
+        echo ""
+        echo "Последние логи Ollama:"
+        docker compose logs --tail=100 ollama || true
+
+        exit 1
+    fi
+
+    printf "."
+    sleep 3
+done
+
+
+
+# ============================================================
+# 6. SUCCESS
+# ============================================================
+
+echo ""
+echo ""
+echo "============================================================"
+echo "  Lime AI Assistant полностью готов!"
+echo "============================================================"
+echo ""
+echo "  Health:  http://localhost:8000/health"
+echo "  Ready:   http://localhost:8000/ready"
+echo "  Swagger: http://localhost:8000/docs"
+echo "  API:     http://localhost:8000/"
+echo "  Widget:  http://localhost:8080/demo/index.html"
+echo ""
+echo "============================================================"

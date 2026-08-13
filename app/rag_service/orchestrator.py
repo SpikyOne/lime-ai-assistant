@@ -22,17 +22,32 @@ from app.rag_service.llm.service import LLMService
 
 class RAGPipeline:
     """
-        Оркестратор полного цикла RAG: вопрос -> поиск -> контекст -> ответ LLM.
+        Оркестратор полного цикла RAG: вопрос -> валидация -> векторный поиск -> контекст -> ответ LLM.
     """
 
     def __init__(self) -> None:
         """
             Инициализирует основные сервисы и компоненты RAG-пайплайна.
+
+            Важен порядок:
+                1. Retriever → E5 + Chroma
+                2. LLMService → клиент Ollama
+
+            После создания объекта можно выполнить warmup LLM.
         """
         self.retriever = Retriever()
         self.guardrails = Guardrails()
         self.context_builder = ContextBuilder()
         self.llm_service = LLMService()
+
+
+    async def warmup(self) -> None:
+        """
+            Прогревает LLM после полной инициализации RAG-пайплайна.
+        """
+        logger.info("Запуск warmup RAGPipeline: embeddings + Chroma уже готовы.")
+        await self.llm_service.warmup()
+        logger.info("Warmup RAGPipeline успешно завершён.")
 
 
     async def answer(self, question: str) -> Tuple[str, List[str]]:
@@ -60,7 +75,7 @@ class RAGPipeline:
         answer_text = await self.llm_service.generate_rag_answer(context, question)
 
         # Извлечение и дедупликация уникальных URL-источников
-        raw_sources = [c.metadata.get("url") for c in chunks if c.metadata.get("url")]
+        raw_sources = [chunk.metadata.get("url") for chunk in chunks if chunk.metadata.get("url")]
         sources = list(dict.fromkeys(raw_sources))
 
         return answer_text, sources

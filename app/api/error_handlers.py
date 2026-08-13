@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 # Локальные импорты
 from app.exceptions import AppError
 from app.logger import logger
-from app.rag_service.exceptions import InvalidQueryError
+from app.rag_service.exceptions import InvalidQueryError, LLMError
 
 
 
@@ -34,6 +34,19 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=400,
             content={"detail": str(exc)}
+        )
+
+    @app.exception_handler(LLMError)
+    async def llm_error_handler(request: Request, exc: LLMError) -> JSONResponse:
+        """
+            Ошибка Ollama/LLM.
+
+            Возвращаем 503, потому что это временная недоступность внешнего для FastAPI LLM-сервиса.
+        """
+        logger.error(f"Ошибка LLM: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": ("Сервис генерации ответов временно недоступен. Попробуйте повторить запрос.")},
         )
 
 

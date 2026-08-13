@@ -2,18 +2,26 @@
     Модуль маршрутизации REST API для Lime HD TV AI Assistant.
 
     Содержит обработчики HTTP-запросов:
-        - GET /health: Проверка работоспособности сервиса (healthcheck).
+        - GET /health: Проверка работоспособности сервиса (healthcheck);
+        - GET /ready:  Готов ли весь RAG pipeline;
         - POST /chat: Главный эндпоинт обработки вопросов пользователей с использованием RAG-пайплайна.
 """
 
 from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi.responses import JSONResponse
 
 # Локальные импорты
 from app.config import settings
 from app.api.conversation_log import log_conversation
 from app.api.deps import PipelineDep
 from app.api.rate_limit import limiter
-from app.api.schemas import ChatRequest, ChatResponse, ErrorResponse, HealthResponse
+from app.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    ErrorResponse,
+    HealthResponse,
+    ReadyResponse,
+)
 
 
 
@@ -24,24 +32,67 @@ router = APIRouter()
 @router.get(
     "/health",
     response_model=HealthResponse,
-    summary="Проверка состояния сервиса",
+    summary="Проверка жизнеспособности API",
     tags=["service"]
 )
 async def health() -> HealthResponse:
     """
         Возвращает статус работоспособности приложения.
+        Важно: /health НЕ означает, что AI полностью готов. Проверяет, что процесс FastAPI работает.
+        Для проверки полной готовности используется /ready.
         Используется для Docker healthcheck, оркестраторов (Kubernetes) и внешних систем мониторинга.
     """
     return HealthResponse(status="ok")
+
+
+@router.get(
+    "/ready",
+    response_model=ReadyResponse,
+    summary="Проверка полной готовности AI-пайплайна",
+    tags=["service"],
+)
+async def ready(request: Request):
+    """
+        Проверяет готовность всех компонентов:
+            1. RAGPipeline;
+            2. ChromaDB;
+            3. LLM warmup.
+        До полной готовности возвращается HTTP 503.
+    """
+    readiness = getattr(
+        request.app.state,
+        "readiness",
+        {
+            "pipeline": False,
+            "chroma": False,
+            "llm": False,
+        },
+    )
+
+    error = getattr(request.app.state, "startup_error", None,)
+
+    is_ready = all(readiness.values())
+
+    response = ReadyResponse(
+        status="ready" if is_ready else ("error" if error else "starting"),
+        pipeline=readiness["pipeline"],
+        chroma=readiness["chroma"],
+        llm=readiness["llm"],
+        error=error,
+    )
+
+    if is_ready: return response
+    return JSONResponse(status_code=503, content=response.model_dump())
 
 
 @router.post(
     "/chat",
     response_model=ChatResponse,
     responses={
-        400: {"model": ErrorResponse, "description": "Некорректный запрос (например, пустой вопрос)"},
-        429: {"model": ErrorResponse, "description": "Превышен лимит запросов"},
-        500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"},
+        400: { "model": ErrorResponse, "description": "Некорректный запрос (например, пустой вопрос)" },
+        429: { "model": ErrorResponse, "description": "Превышен лимит запросов" },
+        500: { "model": ErrorResponse, "description": "Внутренняя ошибка сервера" },
+        503: { "model": ErrorResponse, "description": "AI-сервис ещё не готов или временно недоступен" },
     },
     summary="Генерация ответа на вопрос пользователя",
     tags=["chat"],
@@ -60,6 +111,7 @@ async def chat(
             1. Поиск релевантного контекста в базе знаний Lime HD TV (ChromaDB).
             2. Генерацию ответа через LLM на основе найденных источников.
             3. Отправку асинхронной задачи логирования диалога в background task.
+        PipelineDep автоматически не допускает запрос, если приложение ещё не прошло readiness.
 
         :param request: Объект входящего HTTP-запроса (необходим для работы SlowAPI limiter).
         :param payload: Тело запроса с вопросом пользователя.
