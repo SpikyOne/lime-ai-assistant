@@ -8,8 +8,8 @@
 import os
 import sys
 
-# Включаем Rust-ускоритель ДО импорта библиотеки huggingface_hub
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+# Включаем современный высокоскоростной движок Xet вместо устаревшего hf_transfer
+os.environ["HF_XET_HIGH_PERFORMANCE"] = "1"
 
 from huggingface_hub import snapshot_download
 from huggingface_hub.utils import enable_progress_bars
