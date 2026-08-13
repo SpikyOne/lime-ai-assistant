@@ -7,7 +7,7 @@
 """
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -144,6 +144,10 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = Field(
         default="intfloat/multilingual-e5-base",
         description="Идентификатор модели векторных эмбеддингов на HuggingFace",
+    )
+    HF_TOKEN: Optional[str] = Field(
+        default=None,
+        description="Токен авторизации Hugging Face для снятия ограничений скорости скачивания",
     )
     CHUNK_SIZE: int = Field(
         default=1000,
