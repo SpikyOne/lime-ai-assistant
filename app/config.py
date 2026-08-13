@@ -199,7 +199,7 @@ class Settings(BaseSettings):
     )
 
     LLM_MAX_TOKENS: int = Field(
-        default=256,
+        default=512,
         description="Максимальное количество генерируемых токенов ответа",
     )
 

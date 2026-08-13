@@ -4,72 +4,57 @@ set -e
 
 
 echo "============================================================"
-echo " Lime AI Assistant — установка и запуск"
+echo " Lime AI Assistant — NVIDIA GPU mode"
 echo "============================================================"
+
+
+
+# ============================================================
+# -1. Проверка NVIDIA
+# ============================================================
+
+if ! command -v nvidia-smi >/dev/null 2>&1; then
+    echo ""
+    echo "ОШИБКА:"
+    echo "nvidia-smi не найден."
+    echo ""
+    echo "Убедитесь, что установлен NVIDIA драйвер."
+    exit 1
+fi
+
+
+if ! nvidia-smi >/dev/null 2>&1; then
+    echo ""
+    echo "ОШИБКА:"
+    echo "NVIDIA GPU недоступна."
+    exit 1
+fi
+
+
+
+# ============================================================
+# 0. Проверка Docker GPU
+# ============================================================
+
 echo ""
+echo "==> Проверяю Docker GPU runtime..."
 
+if ! docker run --rm --gpus all \
+    nvidia/cuda:12.9.0-base-ubuntu22.04 \
+    nvidia-smi >/dev/null 2>&1; then
 
-# ============================================================
-# -1. CONFIG
-# ============================================================
+    echo ""
+    echo "ОШИБКА:"
+    echo "Docker не может получить доступ к NVIDIA GPU."
+    echo ""
+    echo "Проверьте NVIDIA Container Toolkit / Docker GPU support."
 
-BASE_COMPOSE="-f docker-compose.yml"
-GPU_COMPOSE="-f docker-compose.yml -f docker-compose.gpu.yml"
-
-COMPOSE_FILES="$BASE_COMPOSE"
-GPU_MODE="CPU"
-
-
-
-# ============================================================
-# 0. GPU DETECTION
-# ============================================================
-
-echo "==> Проверяю наличие NVIDIA GPU..."
-
-if command -v nvidia-smi >/dev/null 2>&1; then
-    echo "    nvidia-smi найден."
-    if nvidia-smi >/dev/null 2>&1; then
-        echo "    NVIDIA GPU доступна."
-        echo ""
-        echo "==> Проверяю доступ Docker к GPU..."
-        if docker run --rm --gpus all \
-            nvidia/cuda:12.9.0-base-ubuntu22.04 \
-            nvidia-smi >/dev/null 2>&1; then
-
-            echo "    Docker GPU runtime работает."
-            echo ""
-            echo "    Включаю NVIDIA GPU режим."
-
-            COMPOSE_FILES="$GPU_COMPOSE"
-            GPU_MODE="NVIDIA GPU"
-
-        else
-            echo ""
-            echo "WARNING:"
-            echo "NVIDIA GPU обнаружена, но Docker не смог"
-            echo "предоставить контейнеру доступ к GPU."
-            echo ""
-            echo "Продолжаю работу в CPU режиме."
-        fi
-    else
-        echo "WARNING:"
-        echo "nvidia-smi найден, но NVIDIA GPU недоступна."
-        echo ""
-        echo "Продолжаю работу в CPU режиме."
-    fi
-
-else
-    echo "    NVIDIA GPU не обнаружена."
-    echo "    Используется CPU режим."
+    exit 1
 
 fi
 
 echo ""
-echo "============================================================"
-echo " Режим запуска: $GPU_MODE"
-echo "============================================================"
-echo ""
+echo "==> NVIDIA GPU доступна Docker."
 
 
 
@@ -97,7 +82,8 @@ echo ""
 echo "==> Собираю Docker-образы"
 
 docker compose \
-    $COMPOSE_FILES \
+    -f docker-compose.yml \
+    -f docker-compose.gpu.yml \
     build
 
 
@@ -110,7 +96,8 @@ echo ""
 echo "==> Проверяю/строю базу знаний (модель эмбеддингов + индексация ChromaDB)"
 
 docker compose \
-    $COMPOSE_FILES \
+    -f docker-compose.yml \
+    -f docker-compose.gpu.yml \
     --profile tools \
     up \
     --abort-on-container-exit \
@@ -126,9 +113,9 @@ echo ""
 echo "==> Запускаю систему"
 
 docker compose \
-    $COMPOSE_FILES \
+    -f docker-compose.yml \
+    -f docker-compose.gpu.yml \
     up -d
-
 
 
 # ============================================================
@@ -163,20 +150,11 @@ while true; do
         echo ""
 
         echo "Последние логи API:"
-        docker compose \
-            $COMPOSE_FILES \
-            logs \
-            --tail=100 \
-            api || true
-        echo ""
+        docker compose logs --tail=100 api || true
 
         echo ""
         echo "Последние логи Ollama:"
-        docker compose \
-            $COMPOSE_FILES \
-            logs \
-            --tail=100 \
-            ollama || true
+        docker compose logs --tail=100 ollama || true
 
         exit 1
     fi
@@ -188,32 +166,27 @@ done
 
 
 # ============================================================
-# GPU DIAGNOSTICS
-# ============================================================
-
-echo ""
-echo ""
-echo "==> Проверяю размещение LLM"
-
-docker compose \
-    $COMPOSE_FILES \
-    exec \
-    ollama \
-    ollama ps || true
-
-
-
-# ============================================================
 # 6. SUCCESS
 # ============================================================
 
 echo ""
 echo ""
 echo "============================================================"
+echo " GPU режим готов"
+echo "============================================================"
+
+docker compose \
+    -f docker-compose.yml \
+    -f docker-compose.gpu.yml \
+    exec \
+    ollama \
+    ollama ps || true
+
+echo ""
+echo ""
+echo "============================================================"
 echo "  Lime AI Assistant полностью готов!"
 echo "============================================================"
-echo ""
-echo " Режим:   $GPU_MODE"
 echo ""
 echo "  Health:  http://localhost:8000/health"
 echo "  Ready:   http://localhost:8000/ready"
